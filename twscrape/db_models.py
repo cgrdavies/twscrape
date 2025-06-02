@@ -10,7 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, TIMESTAMP, Text, text
+from sqlalchemy import Boolean, TIMESTAMP, Text, text, ForeignKey
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -60,7 +60,9 @@ class Account(Base):
 
     # scraping settings ------------------------------------------------------ #
     user_agent: Mapped[str] = mapped_column(Text, nullable=False)
-    proxy: Mapped[str | None] = mapped_column(Text)
+
+    # optional proxy binding
+    proxy_id: Mapped[int | None] = mapped_column(ForeignKey("proxies.id"))
 
     # runtime state / metrics ------------------------------------------------ #
     active: Mapped[bool] = mapped_column(

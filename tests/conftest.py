@@ -25,6 +25,45 @@ def mock_xclidgenstore(monkeypatch):
     monkeypatch.setattr(XClIdGenStore, "get", classmethod(mock_get))
 
 
+async def ensure_test_database(test_db_url):
+    """Ensure the test database exists by creating it if necessary."""
+    import asyncpg
+    from urllib.parse import urlparse
+
+    # Parse the test database URL to get connection info
+    parsed = urlparse(test_db_url)
+
+    # Extract database name from path
+    test_db_name = parsed.path.lstrip('/')
+
+    # Create connection URL to postgres database (for creating the test DB)
+    postgres_url = test_db_url.replace(f"/{test_db_name}", "/postgres")
+
+    # Remove +asyncpg for asyncpg raw connection
+    connection_url = postgres_url.replace("postgresql+asyncpg://", "postgresql://")
+
+    try:
+        # Connect to postgres database to create the test database
+        conn = await asyncpg.connect(connection_url)
+
+        # Check if test database exists
+        result = await conn.fetchval(
+            "SELECT 1 FROM pg_database WHERE datname = $1", test_db_name
+        )
+
+        if not result:
+            # Create the test database
+            await conn.execute(f'CREATE DATABASE "{test_db_name}"')
+            print(f"✅ Created test database: {test_db_name}")
+
+        await conn.close()
+
+    except Exception as e:
+        # If we can't create the database, it might already exist or we might not have permissions
+        # Let the test continue and let it fail with a more specific error if needed
+        print(f"⚠️  Could not ensure test database exists: {e}")
+
+
 @pytest.fixture
 async def pool_mock():
     # Get the base database URL from environment/config
@@ -47,6 +86,9 @@ async def pool_mock():
         else:
             # Fallback to default test configuration
             test_db_url = "postgresql+asyncpg://postgres:postgres@localhost:5432/twscrape_test"
+
+    # Ensure the test database exists
+    await ensure_test_database(test_db_url)
 
     original_env = os.environ.get("TWSCRAPE_DATABASE_URL")
     os.environ["TWSCRAPE_DATABASE_URL"] = test_db_url
