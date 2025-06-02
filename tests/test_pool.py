@@ -1,3 +1,4 @@
+import pytest
 from twscrape.accounts_pool import AccountsPool
 from twscrape.utils import utc
 

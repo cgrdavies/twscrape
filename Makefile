@@ -28,27 +28,11 @@ test-py:
 	@docker -l warning build -f Dockerfile.py-matrix --build-arg VER=$(v) -t $(name) .
 	@docker run $(name)
 
-test-sq:
-	$(eval name=twscrape_sq$(v))
-	@docker -l warning build -f Dockerfile.sq-matrix --build-arg SQLY=$(y) --build-arg SQLV=$(v) -t $(name) .
-	@docker run $(name)
-
 test-matrix-py:
 	@make test-py v=3.10
 	@make test-py v=3.11
 	@make test-py v=3.12
 	@make test-py v=3.13
-
-test-matrix-sq:
-	@# https://www.sqlite.org/chronology.html
-	@make test-sq y=2018 v=3240000
-	@make test-sq y=2019 v=3270200
-	@make test-sq y=2019 v=3300100
-	@make test-sq y=2020 v=3330000
-	@make test-sq y=2021 v=3340100
-	@make test-sq y=2023 v=3430000
-	@make test-sq y=2023 v=3440000
-	@make test-sq y=2024 v=3450300
 
 update-mocks:
 	@rm -rf ./tests/mocked-data/raw_*.json

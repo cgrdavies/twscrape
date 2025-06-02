@@ -77,6 +77,7 @@ class API:
     def __init__(
         self,
         pool: AccountsPool | str | None = None,
+        database_url: str | None = None,
         debug=False,
         proxy: str | None = None,
         raise_when_no_account=False,
@@ -84,8 +85,17 @@ class API:
         if isinstance(pool, AccountsPool):
             self.pool = pool
         elif isinstance(pool, str):
-            self.pool = AccountsPool(db_file=pool, raise_when_no_account=raise_when_no_account)
+            # Legacy: pool was a database path, now we ignore it and use database_url
+            from .config import get_database_url
+            import os
+            if database_url:
+                os.environ["TWSCRAPE_DATABASE_URL"] = database_url
+            self.pool = AccountsPool(raise_when_no_account=raise_when_no_account)
         else:
+            # pool is None, create new AccountsPool
+            if database_url:
+                import os
+                os.environ["TWSCRAPE_DATABASE_URL"] = database_url
             self.pool = AccountsPool(raise_when_no_account=raise_when_no_account)
 
         self.proxy = proxy

@@ -4,18 +4,19 @@ import argparse
 import asyncio
 import io
 import json
-import sqlite3
 from importlib.metadata import version
 
 import httpx
 
 from .api import API, AccountsPool
-from .db import get_sqlite_version
+from .config import init_env
 from .logger import logger, set_log_level
 from .login import LoginConfig
 from .models import Tweet, User
 from .utils import print_table
 
+# Initialize environment for CLI usage
+init_env()
 
 class CustomHelpFormatter(argparse.HelpFormatter):
     def __init__(self, prog):
@@ -46,11 +47,10 @@ async def main(args):
 
     if args.command == "version":
         print(f"twscrape: {version('twscrape')}")
-        print(f"SQLite runtime: {sqlite3.sqlite_version} ({await get_sqlite_version()})")
         return
 
     login_config = LoginConfig(getattr(args, "email_first", False), getattr(args, "manual", False))
-    pool = AccountsPool(args.db, login_config=login_config)
+    pool = AccountsPool(login_config=login_config)
     api = API(pool, debug=args.debug)
 
     if args.command == "accounts":
@@ -141,7 +141,6 @@ def custom_help(p):
 
 def run():
     p = argparse.ArgumentParser(add_help=False, formatter_class=CustomHelpFormatter)
-    p.add_argument("--db", default="accounts.db", help="Accounts database file")
     p.add_argument("--debug", action="store_true", help="Enable debug mode")
     subparsers = p.add_subparsers(dest="command")
 

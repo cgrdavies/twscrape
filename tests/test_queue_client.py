@@ -1,12 +1,12 @@
 from contextlib import aclosing
 
 import httpx
+import pytest
 from pytest_httpx import HTTPXMock
 
 from twscrape.accounts_pool import AccountsPool
 from twscrape.queue_client import QueueClient
 
-DB_FILE = "/tmp/twscrape_test_queue_client.db"
 URL = "https://example.com/api"
 CF = tuple[AccountsPool, QueueClient]
 
