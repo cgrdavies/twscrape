@@ -27,19 +27,154 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if Docker is installed and running
-print_status "Checking Docker installation..."
-if ! command -v docker &> /dev/null; then
-    print_error "Docker is not installed. Please install Docker first."
-    exit 1
+# Function to install and setup PostgreSQL
+install_postgresql() {
+    print_status "Installing PostgreSQL..."
+
+    # Update package index
+    sudo apt-get update
+
+    # Install PostgreSQL
+    sudo apt-get install -y postgresql postgresql-contrib
+
+    print_success "PostgreSQL installed"
+
+    # Check if systemd is available
+    if command -v systemctl &> /dev/null && systemctl is-system-running &>/dev/null; then
+        print_status "Using systemd to manage PostgreSQL..."
+        # Start and enable PostgreSQL service
+        sudo systemctl start postgresql
+        sudo systemctl enable postgresql
+    else
+        print_status "Systemd not available, starting PostgreSQL manually..."
+        # Start PostgreSQL manually
+        sudo -u postgres /usr/lib/postgresql/*/bin/pg_ctl -D /var/lib/postgresql/*/main -l /var/lib/postgresql/*/main/pg.log start || true
+
+        # Alternative: use service command if available
+        if command -v service &> /dev/null; then
+            sudo service postgresql start || true
+        fi
+
+        # Give PostgreSQL a moment to start
+        sleep 3
+    fi
+
+    print_success "PostgreSQL started"
+
+    # Setup database and user
+    print_status "Setting up PostgreSQL database and user..."
+
+    # Wait for PostgreSQL to be ready
+    max_attempts=10
+    attempt=1
+    while [ $attempt -le $max_attempts ]; do
+        if sudo -u postgres psql -c "SELECT 1;" &>/dev/null; then
+            break
+        fi
+
+        if [ $attempt -eq $max_attempts ]; then
+            print_error "PostgreSQL failed to start properly"
+            exit 1
+        fi
+
+        print_status "Waiting for PostgreSQL to be ready... (attempt $attempt/$max_attempts)"
+        sleep 2
+        ((attempt++))
+    done
+
+    # Create database and user
+    sudo -u postgres psql -c "CREATE DATABASE twscrape;" 2>/dev/null || print_warning "Database 'twscrape' may already exist"
+    sudo -u postgres psql -c "CREATE USER twscrape_user WITH PASSWORD 'twscrape_pass';" 2>/dev/null || print_warning "User 'twscrape_user' may already exist"
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE twscrape TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -c "ALTER USER twscrape_user CREATEDB;" 2>/dev/null || true
+
+    # Grant schema permissions (important for newer PostgreSQL versions)
+    sudo -u postgres psql -d twscrape -c "GRANT ALL ON SCHEMA public TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO twscrape_user;" 2>/dev/null || true
+
+    # Make the user owner of the database for full control
+    sudo -u postgres psql -c "ALTER DATABASE twscrape OWNER TO twscrape_user;" 2>/dev/null || true
+
+    print_success "PostgreSQL database and user configured"
+}
+
+# Function to start PostgreSQL if it's not running
+start_postgresql() {
+    if command -v systemctl &> /dev/null && systemctl is-system-running &>/dev/null; then
+        if ! sudo systemctl is-active --quiet postgresql; then
+            print_status "Starting PostgreSQL service..."
+            sudo systemctl start postgresql
+        fi
+    else
+        # Check if PostgreSQL is running by trying to connect
+        if ! sudo -u postgres psql -c "SELECT 1;" &>/dev/null; then
+            print_status "Starting PostgreSQL manually..."
+
+            # Try different methods to start PostgreSQL
+            sudo -u postgres /usr/lib/postgresql/*/bin/pg_ctl -D /var/lib/postgresql/*/main -l /var/lib/postgresql/*/main/pg.log start || true
+
+            if command -v service &> /dev/null; then
+                sudo service postgresql start || true
+            fi
+
+            # Give it time to start
+            sleep 3
+        fi
+    fi
+}
+
+# Check if PostgreSQL is installed, install if not
+print_status "Checking PostgreSQL installation..."
+if ! command -v psql &> /dev/null; then
+    print_warning "PostgreSQL is not installed. Installing PostgreSQL..."
+    install_postgresql
+else
+    print_success "PostgreSQL is already installed"
+
+    # Start PostgreSQL if needed
+    start_postgresql
+
+    # Ensure database and user exist
+    print_status "Ensuring database and user exist..."
+
+    # Wait for PostgreSQL to be ready
+    max_attempts=10
+    attempt=1
+    while [ $attempt -le $max_attempts ]; do
+        if sudo -u postgres psql -c "SELECT 1;" &>/dev/null; then
+            break
+        fi
+
+        if [ $attempt -eq $max_attempts ]; then
+            print_error "PostgreSQL is not responding"
+            exit 1
+        fi
+
+        print_status "Waiting for PostgreSQL... (attempt $attempt/$max_attempts)"
+        sleep 2
+        ((attempt++))
+    done
+
+    sudo -u postgres psql -c "CREATE DATABASE twscrape;" 2>/dev/null || print_warning "Database 'twscrape' may already exist"
+    sudo -u postgres psql -c "CREATE USER twscrape_user WITH PASSWORD 'twscrape_pass';" 2>/dev/null || print_warning "User 'twscrape_user' may already exist"
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE twscrape TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -c "ALTER USER twscrape_user CREATEDB;" 2>/dev/null || true
+
+    # Grant schema permissions (important for newer PostgreSQL versions)
+    sudo -u postgres psql -d twscrape -c "GRANT ALL ON SCHEMA public TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO twscrape_user;" 2>/dev/null || true
+
+    # Make the user owner of the database for full control
+    sudo -u postgres psql -c "ALTER DATABASE twscrape OWNER TO twscrape_user;" 2>/dev/null || true
 fi
 
-if ! docker info &> /dev/null; then
-    print_error "Docker is not running. Please start Docker first."
-    exit 1
-fi
-
-print_success "Docker is available and running"
+print_success "PostgreSQL is ready"
 
 # Check if Python 3.10+ is available
 print_status "Checking Python version..."
@@ -83,63 +218,26 @@ if [ -f "Makefile" ]; then
     print_status "Using Makefile for installation..."
     make install
 else
-    print_status "Installing manually..."
+    print_status "Installing main dependencies and dev dependencies..."
+    # Install main dependencies first
+    pip install -e .
+    # Then install with dev dependencies
     pip install -e .[dev]
 fi
 print_success "Dependencies installed"
 
-# Start PostgreSQL Docker container
-print_status "Starting PostgreSQL Docker container..."
-
-# Stop and remove existing container if it exists
-if docker ps -a --format 'table {{.Names}}' | grep -q "twscrape-postgres"; then
-    print_warning "Existing PostgreSQL container found. Stopping and removing..."
-    docker stop twscrape-postgres 2>/dev/null || true
-    docker rm twscrape-postgres 2>/dev/null || true
-fi
-
-# Start new PostgreSQL container
-print_status "Starting new PostgreSQL container..."
-docker run -d \
-    --name twscrape-postgres \
-    -e POSTGRES_DB=twscrape \
-    -e POSTGRES_USER=postgres \
-    -e POSTGRES_PASSWORD=postgres \
-    -p 5432:5432 \
-    --restart unless-stopped \
-    postgres:15
-
-print_success "PostgreSQL container started"
-
-# Wait for PostgreSQL to be ready
-print_status "Waiting for PostgreSQL to be ready..."
-max_attempts=30
-attempt=1
-
-while [ $attempt -le $max_attempts ]; do
-    if docker exec twscrape-postgres pg_isready -U postgres -d twscrape &>/dev/null; then
-        break
-    fi
-
-    if [ $attempt -eq $max_attempts ]; then
-        print_error "PostgreSQL failed to start within ${max_attempts} seconds"
-        docker logs twscrape-postgres
-        exit 1
-    fi
-
-    print_status "Waiting for PostgreSQL... (attempt $attempt/$max_attempts)"
-    sleep 2
-    ((attempt++))
-done
-
-print_success "PostgreSQL is ready"
+# Verify key dependencies are installed
+print_status "Verifying key dependencies..."
+python -c "import httpx; print(f'✅ httpx {httpx.__version__} installed')" 2>/dev/null || print_warning "httpx not found"
+python -c "import asyncpg; print(f'✅ asyncpg version installed')" 2>/dev/null || print_warning "asyncpg not found"
+python -c "import alembic; print(f'✅ alembic version installed')" 2>/dev/null || print_warning "alembic not found"
 
 # Set environment variables
 print_status "Setting environment variables..."
-export TWSCRAPE_DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/twscrape"
+export TWSCRAPE_DATABASE_URL="postgresql+asyncpg://twscrape_user:twscrape_pass@localhost:5432/twscrape"
 
 # Create .env file for persistent environment variables
-echo "TWSCRAPE_DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/twscrape" > .env
+echo "TWSCRAPE_DATABASE_URL=postgresql+asyncpg://twscrape_user:twscrape_pass@localhost:5432/twscrape" > .env
 print_success "Environment variables set and saved to .env file"
 
 # Run database migrations
@@ -184,11 +282,17 @@ echo "• Run tests: ${YELLOW}make test${NC}"
 echo "• Run linting: ${YELLOW}make lint${NC}"
 echo "• Check everything: ${YELLOW}make check${NC}"
 echo ""
-echo -e "${GREEN}Docker PostgreSQL:${NC}"
-echo "• Container name: ${YELLOW}twscrape-postgres${NC}"
-echo "• Stop container: ${YELLOW}docker stop twscrape-postgres${NC}"
-echo "• Start container: ${YELLOW}docker start twscrape-postgres${NC}"
-echo "• Remove container: ${YELLOW}docker rm twscrape-postgres${NC}"
+echo -e "${GREEN}PostgreSQL (Local):${NC}"
+if command -v systemctl &> /dev/null && systemctl is-system-running &>/dev/null; then
+    echo "• Service status: ${YELLOW}sudo systemctl status postgresql${NC}"
+    echo "• Stop service: ${YELLOW}sudo systemctl stop postgresql${NC}"
+    echo "• Start service: ${YELLOW}sudo systemctl start postgresql${NC}"
+else
+    echo "• Check if running: ${YELLOW}sudo -u postgres psql -c 'SELECT 1;'${NC}"
+    echo "• Start manually: ${YELLOW}sudo service postgresql start${NC} (or use pg_ctl)"
+    echo "• Stop manually: ${YELLOW}sudo service postgresql stop${NC} (or use pg_ctl)"
+fi
+echo "• Connect to database: ${YELLOW}psql -h localhost -U twscrape_user -d twscrape${NC}"
 echo ""
 echo -e "${GREEN}Environment:${NC}"
 echo "• Database URL: ${YELLOW}$TWSCRAPE_DATABASE_URL${NC}"
