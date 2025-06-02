@@ -84,19 +84,29 @@ install_postgresql() {
 
     # Create database and user
     sudo -u postgres psql -c "CREATE DATABASE twscrape;" 2>/dev/null || print_warning "Database 'twscrape' may already exist"
+    sudo -u postgres psql -c "CREATE DATABASE twscrape_test;" 2>/dev/null || print_warning "Database 'twscrape_test' may already exist"
     sudo -u postgres psql -c "CREATE USER twscrape_user WITH PASSWORD 'twscrape_pass';" 2>/dev/null || print_warning "User 'twscrape_user' may already exist"
     sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE twscrape TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE twscrape_test TO twscrape_user;" 2>/dev/null || true
     sudo -u postgres psql -c "ALTER USER twscrape_user CREATEDB;" 2>/dev/null || true
 
-    # Grant schema permissions (important for newer PostgreSQL versions)
+    # Grant schema permissions for main database (important for newer PostgreSQL versions)
     sudo -u postgres psql -d twscrape -c "GRANT ALL ON SCHEMA public TO twscrape_user;" 2>/dev/null || true
     sudo -u postgres psql -d twscrape -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO twscrape_user;" 2>/dev/null || true
     sudo -u postgres psql -d twscrape -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO twscrape_user;" 2>/dev/null || true
     sudo -u postgres psql -d twscrape -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO twscrape_user;" 2>/dev/null || true
     sudo -u postgres psql -d twscrape -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO twscrape_user;" 2>/dev/null || true
 
-    # Make the user owner of the database for full control
+    # Grant schema permissions for test database
+    sudo -u postgres psql -d twscrape_test -c "GRANT ALL ON SCHEMA public TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape_test -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape_test -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape_test -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape_test -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO twscrape_user;" 2>/dev/null || true
+
+    # Make the user owner of both databases for full control
     sudo -u postgres psql -c "ALTER DATABASE twscrape OWNER TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -c "ALTER DATABASE twscrape_test OWNER TO twscrape_user;" 2>/dev/null || true
 
     print_success "PostgreSQL database and user configured"
 }
@@ -159,19 +169,29 @@ else
     done
 
     sudo -u postgres psql -c "CREATE DATABASE twscrape;" 2>/dev/null || print_warning "Database 'twscrape' may already exist"
+    sudo -u postgres psql -c "CREATE DATABASE twscrape_test;" 2>/dev/null || print_warning "Database 'twscrape_test' may already exist"
     sudo -u postgres psql -c "CREATE USER twscrape_user WITH PASSWORD 'twscrape_pass';" 2>/dev/null || print_warning "User 'twscrape_user' may already exist"
     sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE twscrape TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE twscrape_test TO twscrape_user;" 2>/dev/null || true
     sudo -u postgres psql -c "ALTER USER twscrape_user CREATEDB;" 2>/dev/null || true
 
-    # Grant schema permissions (important for newer PostgreSQL versions)
+    # Grant schema permissions for main database (important for newer PostgreSQL versions)
     sudo -u postgres psql -d twscrape -c "GRANT ALL ON SCHEMA public TO twscrape_user;" 2>/dev/null || true
     sudo -u postgres psql -d twscrape -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO twscrape_user;" 2>/dev/null || true
     sudo -u postgres psql -d twscrape -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO twscrape_user;" 2>/dev/null || true
     sudo -u postgres psql -d twscrape -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO twscrape_user;" 2>/dev/null || true
     sudo -u postgres psql -d twscrape -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO twscrape_user;" 2>/dev/null || true
 
-    # Make the user owner of the database for full control
+    # Grant schema permissions for test database
+    sudo -u postgres psql -d twscrape_test -c "GRANT ALL ON SCHEMA public TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape_test -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape_test -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape_test -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -d twscrape_test -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO twscrape_user;" 2>/dev/null || true
+
+    # Make the user owner of both databases for full control
     sudo -u postgres psql -c "ALTER DATABASE twscrape OWNER TO twscrape_user;" 2>/dev/null || true
+    sudo -u postgres psql -c "ALTER DATABASE twscrape_test OWNER TO twscrape_user;" 2>/dev/null || true
 fi
 
 print_success "PostgreSQL is ready"
