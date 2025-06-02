@@ -46,10 +46,18 @@ class XClIdGenStore:
 
 
 class Ctx:
-    def __init__(self, acc: Account, clt: AsyncClient):
+    def __init__(
+        self,
+        acc: Account,
+        clt: AsyncClient,
+        proxy_id: int | None = None,
+        proxy: str | None = None,
+    ):
         self.req_count = 0
         self.acc = acc
         self.clt = clt
+        self.proxy_id = proxy_id
+        self.proxy = proxy
 
     async def aclose(self):
         await self.clt.aclose()
@@ -154,16 +162,22 @@ class QueueClient:
         if acc is None:
             return None
 
-        # if account has no proxy yet, fetch one
-        if acc.proxy is None:
-            from twscrape.proxies import get_active
+        from twscrape.proxies import get_active, get_url
 
-            if new_proxy := await get_active():
-                acc.proxy = new_proxy
+        proxy_id = acc.proxy_id
+        proxy = None
+        if proxy_id is not None:
+            proxy = await get_url(proxy_id)
+
+        if proxy is None:
+            active = await get_active()
+            if active:
+                proxy_id, proxy = active
+                acc.proxy_id = proxy_id
                 await self.pool.save(acc)
 
-        clt = acc.make_client(proxy=self.proxy)
-        self.ctx = Ctx(acc, clt)
+        clt = acc.make_client(proxy=self.proxy or proxy)
+        self.ctx = Ctx(acc, clt, proxy_id=proxy_id, proxy=proxy)
         return self.ctx
 
     async def _check_rep(self, rep: Response) -> None:
@@ -283,17 +297,18 @@ class QueueClient:
                 # proxy looks dead – mark & rotate
                 from twscrape.proxies import mark_failed, get_active
 
-                bad = ctx.acc.proxy
-                if bad:
-                    await mark_failed(bad)
+                bad_id, bad_url = ctx.proxy_id, ctx.proxy
+                if bad_id is not None:
+                    await mark_failed(bad_id)
 
                 fresh = await get_active()
                 if fresh:
-                    ctx.acc.proxy = fresh
-                    await self.pool.save(ctx.acc)
+                    new_id, new_url = fresh
                     await ctx.aclose()
-                    clt = ctx.acc.make_client()
-                    self.ctx = ctx = Ctx(ctx.acc, clt)
+                    clt = ctx.acc.make_client(proxy=self.proxy or new_url)
+                    ctx.acc.proxy_id = new_id
+                    await self.pool.save(ctx.acc)
+                    self.ctx = ctx = Ctx(ctx.acc, clt, proxy_id=new_id, proxy=new_url)
                     continue  # retry immediately
                 raise e  # nothing to switch to
             except httpx.ReadTimeout:
