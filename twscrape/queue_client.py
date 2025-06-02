@@ -295,9 +295,9 @@ class QueueClient:
                 continue
             except (httpx.ProxyError, httpx.ConnectError, httpx.ConnectTimeout) as e:
                 # proxy looks dead – mark & rotate
-                from twscrape.proxies import mark_failed, get_active
+                from twscrape.proxies import get_active, mark_failed
 
-                bad_id, bad_url = ctx.proxy_id, ctx.proxy
+                bad_id, _bad_url = ctx.proxy_id, ctx.proxy
                 if bad_id is not None:
                     await mark_failed(bad_id)
 

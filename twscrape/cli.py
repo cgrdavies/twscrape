@@ -16,7 +16,6 @@ from .migrations.utils import (
     check_migration_status,
     create_migration,
     init_database,
-    run_migrations,
 )
 from .models import Tweet, User
 from .utils import print_table
@@ -67,7 +66,7 @@ async def main(args):
             print(f"❌ Error: {status['error']}")
             exit(1)
         else:
-            print(f"📊 Migration Status:")
+            print("📊 Migration Status:")
             print(f"   Current revision: {status.get('current_revision', 'None')}")
             print(f"   Head revision: {status.get('head_revision', 'None')}")
             print(f"   Up to date: {'✅' if status.get('is_up_to_date') else '❌'}")

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from .db_pg import execute, executemany, fetchall, fetchone
+from .db_pg import execute, executemany, fetchone
 
 
 async def ensure(url: str):

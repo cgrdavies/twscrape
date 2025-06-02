@@ -1,7 +1,6 @@
 from contextlib import aclosing
 
 import httpx
-import pytest
 from pytest_httpx import HTTPXMock
 
 from twscrape.accounts_pool import AccountsPool

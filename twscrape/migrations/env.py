@@ -1,11 +1,9 @@
 import asyncio
 from logging.config import fileConfig
 
-from sqlalchemy import pool, create_engine
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
-
 from alembic import context
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Connection
 
 # Import your models and engine function
 from twscrape.db_models import Base
@@ -95,7 +93,7 @@ def run_migrations_online() -> None:
     # Check if we're in an async context or if we should use sync mode
     try:
         # Try to get the current event loop
-        loop = asyncio.get_running_loop()
+        asyncio.get_running_loop()
         # If we're already in an event loop, use sync mode to avoid conflicts
         run_migrations_sync()
     except RuntimeError:

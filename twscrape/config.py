@@ -31,19 +31,20 @@ def load_env_if_exists():
 
 def is_development():
     """Detect if we're running in development mode."""
-    return any([
-        os.getenv("ENVIRONMENT", "").lower() in ("development", "dev"),
-        os.getenv("DEBUG", "").lower() in ("true", "1", "on"),
-        os.getenv("TWSCRAPE_ENV", "").lower() == "development",
-        Path(".env").exists(),
-    ])
+    return any(
+        [
+            os.getenv("ENVIRONMENT", "").lower() in ("development", "dev"),
+            os.getenv("DEBUG", "").lower() in ("true", "1", "on"),
+            os.getenv("TWSCRAPE_ENV", "").lower() == "development",
+            Path(".env").exists(),
+        ]
+    )
 
 
 def get_database_url():
     """Get database URL with fallback to default PostgreSQL."""
     return os.getenv(
-        "TWSCRAPE_DATABASE_URL",
-        "postgresql+asyncpg://postgres:postgres@localhost:5432/twscrape"
+        "TWSCRAPE_DATABASE_URL", "postgresql+asyncpg://postgres:postgres@localhost:5432/twscrape"
     )
 
 
