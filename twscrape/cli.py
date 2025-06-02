@@ -12,6 +12,7 @@ from .api import API, AccountsPool
 from .config import init_env
 from .logger import logger, set_log_level
 from .login import LoginConfig
+from .migrations.utils import run_migrations, check_migration_status, init_database, create_migration
 from .models import Tweet, User
 from .utils import print_table
 
@@ -48,6 +49,28 @@ async def main(args):
     if args.command == "version":
         print(f"twscrape: {version('twscrape')}")
         return
+
+    # Handle migration commands (don't need pool/api)
+    if args.command == "migrate":
+        success = init_database()
+        exit(0 if success else 1)
+
+    if args.command == "migration_status":
+        status = check_migration_status()
+        if "error" in status:
+            print(f"❌ Error: {status['error']}")
+            exit(1)
+        else:
+            print(f"📊 Migration Status:")
+            print(f"   Current revision: {status.get('current_revision', 'None')}")
+            print(f"   Head revision: {status.get('head_revision', 'None')}")
+            print(f"   Up to date: {'✅' if status.get('is_up_to_date') else '❌'}")
+            print(f"   Needs migration: {'❌' if status.get('needs_migration') else '✅'}")
+        return
+
+    if args.command == "create_migration":
+        success = create_migration(args.message, autogenerate=getattr(args, 'autogenerate', True))
+        exit(0 if success else 1)
 
     login_config = LoginConfig(getattr(args, "email_first", False), getattr(args, "manual", False))
     pool = AccountsPool(login_config=login_config)
@@ -158,6 +181,15 @@ def run():
     subparsers.add_parser("version", help="Show version")
     subparsers.add_parser("accounts", help="List all accounts")
     subparsers.add_parser("stats", help="Get current usage stats")
+
+    # Migration commands
+    subparsers.add_parser("migrate", help="Run database migrations")
+    subparsers.add_parser("migration_status", help="Check migration status")
+
+    create_migration_cmd = subparsers.add_parser("create_migration", help="Create new migration")
+    create_migration_cmd.add_argument("message", help="Migration description")
+    create_migration_cmd.add_argument("--no-autogenerate", action="store_false", dest="autogenerate",
+                                    help="Don't auto-generate migration from model changes")
 
     add_accounts = subparsers.add_parser("add_accounts", help="Add accounts")
     add_accounts.add_argument("file_path", help="File with accounts")

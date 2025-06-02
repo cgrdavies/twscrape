@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: twscrape
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Migration service - runs once to set up database
+  migrate:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      TWSCRAPE_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/twscrape
+    command: python scripts/migrate.py --wait-for-db --timeout 60
+    restart: "no"
+
+  # Example application using twscrape
+  app:
+    build: .
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      TWSCRAPE_DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/twscrape
+    command: python examples/docker/app.py
+    volumes:
+      - ./examples/docker/app.py:/app/examples/docker/app.py
+
+volumes:
+  postgres_data:

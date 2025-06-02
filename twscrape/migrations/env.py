@@ -1,7 +1,7 @@
 import asyncio
 from logging.config import fileConfig
 
-from sqlalchemy import pool
+from sqlalchemy import pool, create_engine
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
@@ -61,6 +61,20 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
+def run_migrations_sync() -> None:
+    """Run migrations in sync mode for CLI usage."""
+    url = config.get_main_option("sqlalchemy.url")
+
+    # Convert async URL to sync if needed
+    if url and url.startswith("postgresql+asyncpg://"):
+        url = url.replace("postgresql+asyncpg://", "postgresql://")
+
+    connectable = create_engine(url)
+
+    with connectable.connect() as connection:
+        do_run_migrations(connection)
+
+
 async def run_async_migrations() -> None:
     """In this scenario we need to create an Engine
     and associate a connection with the context.
@@ -78,7 +92,15 @@ async def run_async_migrations() -> None:
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
 
-    asyncio.run(run_async_migrations())
+    # Check if we're in an async context or if we should use sync mode
+    try:
+        # Try to get the current event loop
+        loop = asyncio.get_running_loop()
+        # If we're already in an event loop, use sync mode to avoid conflicts
+        run_migrations_sync()
+    except RuntimeError:
+        # No event loop running, safe to use async
+        asyncio.run(run_async_migrations())
 
 
 if context.is_offline_mode():
