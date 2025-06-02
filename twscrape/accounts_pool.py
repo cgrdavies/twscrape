@@ -100,6 +100,11 @@ class AccountsPool:
             mfa_code=mfa_code,
         )
 
+        if proxy:
+            from twscrape.proxies import ensure
+
+            await ensure(proxy)
+
         if "ct0" in account.cookies:
             account.active = True
 
@@ -254,10 +259,7 @@ class AccountsPool:
             last_used = now()
         WHERE username = :username
         """
-        await execute(qs, {
-            "username": username,
-            "queue_name": queue
-        })
+        await execute(qs, {"username": username, "queue_name": queue})
 
         # Update stats separately if req_count > 0
         if req_count > 0:
@@ -368,7 +370,7 @@ class AccountsPool:
 
         qs = "SELECT DISTINCT f.key AS k FROM accounts, jsonb_each(locks) AS f(key, value)"
         rs = await fetchall(qs)
-        gql_ops = [dict(x._mapping)["k"] if hasattr(x, '_mapping') else x[0] for x in rs]
+        gql_ops = [dict(x._mapping)["k"] if hasattr(x, "_mapping") else x[0] for x in rs]
 
         config = [
             ("total", "SELECT COUNT(*) FROM accounts"),

@@ -6,6 +6,8 @@ from twscrape.api import API
 from twscrape.logger import set_log_level
 from twscrape.queue_client import QueueClient, XClIdGenStore
 from twscrape.db_pg import create_engine, set_engine, dispose_engine, execute
+from twscrape.migrations.utils import run_migrations
+from twscrape.config import get_database_url
 
 set_log_level("ERROR")
 
@@ -25,8 +27,27 @@ def mock_xclidgenstore(monkeypatch):
 
 @pytest.fixture
 async def pool_mock():
-    # Set up test database URL
-    test_db_url = "postgresql+asyncpg://postgres:postgres@localhost:5432/twscrape_test"
+    # Get the base database URL from environment/config
+    base_db_url = get_database_url()
+
+    # Create test database URL by appending _test to the database name
+    # Handle both cases: with and without trailing database name
+    if base_db_url.endswith("/twscrape"):
+        test_db_url = base_db_url + "_test"
+    elif "/twscrape?" in base_db_url:
+        # Handle case with query parameters
+        test_db_url = base_db_url.replace("/twscrape?", "/twscrape_test?")
+    else:
+        # Extract the base URL and append the test database name
+        # Format: postgresql+asyncpg://user:pass@host:port/database
+        url_parts = base_db_url.rsplit("/", 1)
+        if len(url_parts) == 2:
+            base_url, db_name = url_parts
+            test_db_url = f"{base_url}/{db_name}_test"
+        else:
+            # Fallback to default test configuration
+            test_db_url = "postgresql+asyncpg://postgres:postgres@localhost:5432/twscrape_test"
+
     original_env = os.environ.get("TWSCRAPE_DATABASE_URL")
     os.environ["TWSCRAPE_DATABASE_URL"] = test_db_url
 
@@ -38,15 +59,22 @@ async def pool_mock():
     set_engine(engine)
 
     try:
+        # Run migrations to ensure all tables are created
+        success = run_migrations()
+        if not success:
+            raise RuntimeError("Failed to run migrations for test database")
+
         pool = AccountsPool()
 
         # Clean up any existing test data before each test
         await execute("DELETE FROM accounts")
+        await execute("DELETE FROM proxies")
 
         yield pool
 
         # Clean up after each test
         await execute("DELETE FROM accounts")
+        await execute("DELETE FROM proxies")
 
     finally:
         # Clean up engine and restore environment

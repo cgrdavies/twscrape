@@ -154,6 +154,14 @@ class QueueClient:
         if acc is None:
             return None
 
+        # if account has no proxy yet, fetch one
+        if acc.proxy is None:
+            from twscrape.proxies import get_active
+
+            if new_proxy := await get_active():
+                acc.proxy = new_proxy
+                await self.pool.save(acc)
+
         clt = acc.make_client(proxy=self.proxy)
         self.ctx = Ctx(acc, clt)
         return self.ctx
@@ -250,7 +258,7 @@ class QueueClient:
         return await self.req("GET", url, params=params)
 
     async def req(self, method: str, url: str, params: ReqParams = None) -> Response | None:
-        unknown_retry, connection_retry = 0, 0
+        unknown_retry = 0
 
         while True:
             ctx = await self._get_ctx()  # not need to close client, class implements __aexit__
@@ -263,7 +271,7 @@ class QueueClient:
                 await self._check_rep(rep)
 
                 ctx.req_count += 1  # count only successful
-                unknown_retry, connection_retry = 0, 0
+                unknown_retry = 0
                 return rep
             except AbortReqError:
                 # abort all queries
@@ -271,14 +279,25 @@ class QueueClient:
             except HandledError:
                 # retry with new account
                 continue
-            except (httpx.ReadTimeout, httpx.ProxyError):
-                # http transport failed, just retry with same account
+            except (httpx.ProxyError, httpx.ConnectError, httpx.ConnectTimeout) as e:
+                # proxy looks dead – mark & rotate
+                from twscrape.proxies import mark_failed, get_active
+
+                bad = ctx.acc.proxy
+                if bad:
+                    await mark_failed(bad)
+
+                fresh = await get_active()
+                if fresh:
+                    ctx.acc.proxy = fresh
+                    await self.pool.save(ctx.acc)
+                    await ctx.aclose()
+                    clt = ctx.acc.make_client()
+                    self.ctx = ctx = Ctx(ctx.acc, clt)
+                    continue  # retry immediately
+                raise e  # nothing to switch to
+            except httpx.ReadTimeout:
                 continue
-            except (httpx.ConnectError, httpx.ConnectTimeout) as e:
-                # if proxy missconfigured or ???
-                connection_retry += 1
-                if connection_retry >= 3:
-                    raise e
             except Exception as e:
                 unknown_retry += 1
                 if unknown_retry >= 3:

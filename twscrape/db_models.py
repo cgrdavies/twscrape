@@ -100,3 +100,20 @@ class Account(Base):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<Account {self.username} active={self.active!r}>"
+
+
+# --------------------------------------------------------------------------- #
+# Proxies table
+# --------------------------------------------------------------------------- #
+
+
+class Proxy(Base):
+    """HTTP proxy with health status."""
+
+    __tablename__ = "proxies"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    url: Mapped[str] = mapped_column(Text, unique=True, nullable=False)
+    active: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    fail_count: Mapped[int] = mapped_column(server_default=text("0"))
+    last_failed: Mapped[datetime | None] = mapped_column(TIMESTAMP(timezone=True))
