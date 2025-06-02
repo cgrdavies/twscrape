@@ -60,7 +60,6 @@ class Account(Base):
 
     # scraping settings ------------------------------------------------------ #
     user_agent: Mapped[str] = mapped_column(Text, nullable=False)
-    proxy: Mapped[str | None] = mapped_column(Text)
 
     # runtime state / metrics ------------------------------------------------ #
     active: Mapped[bool] = mapped_column(

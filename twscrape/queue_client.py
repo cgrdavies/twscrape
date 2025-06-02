@@ -46,10 +46,11 @@ class XClIdGenStore:
 
 
 class Ctx:
-    def __init__(self, acc: Account, clt: AsyncClient):
+    def __init__(self, acc: Account, clt: AsyncClient, proxy: str | None = None):
         self.req_count = 0
         self.acc = acc
         self.clt = clt
+        self.proxy = proxy
 
     async def aclose(self):
         await self.clt.aclose()
@@ -154,16 +155,11 @@ class QueueClient:
         if acc is None:
             return None
 
-        # if account has no proxy yet, fetch one
-        if acc.proxy is None:
-            from twscrape.proxies import get_active
+        from twscrape.proxies import get_active
 
-            if new_proxy := await get_active():
-                acc.proxy = new_proxy
-                await self.pool.save(acc)
-
-        clt = acc.make_client(proxy=self.proxy)
-        self.ctx = Ctx(acc, clt)
+        proxy = await get_active()
+        clt = acc.make_client(proxy=self.proxy or proxy)
+        self.ctx = Ctx(acc, clt, proxy=proxy)
         return self.ctx
 
     async def _check_rep(self, rep: Response) -> None:
@@ -283,17 +279,15 @@ class QueueClient:
                 # proxy looks dead – mark & rotate
                 from twscrape.proxies import mark_failed, get_active
 
-                bad = ctx.acc.proxy
+                bad = ctx.proxy
                 if bad:
                     await mark_failed(bad)
 
                 fresh = await get_active()
                 if fresh:
-                    ctx.acc.proxy = fresh
-                    await self.pool.save(ctx.acc)
                     await ctx.aclose()
-                    clt = ctx.acc.make_client()
-                    self.ctx = ctx = Ctx(ctx.acc, clt)
+                    clt = ctx.acc.make_client(proxy=self.proxy or fresh)
+                    self.ctx = ctx = Ctx(ctx.acc, clt, proxy=fresh)
                     continue  # retry immediately
                 raise e  # nothing to switch to
             except httpx.ReadTimeout:

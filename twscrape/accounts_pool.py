@@ -75,7 +75,6 @@ class AccountsPool:
         email: str,
         email_password: str,
         user_agent: str | None = None,
-        proxy: str | None = None,
         cookies: str | None = None,
         mfa_code: str | None = None,
     ):
@@ -96,14 +95,9 @@ class AccountsPool:
             stats={},
             headers={},
             cookies=parse_cookies(cookies) if cookies else {},
-            proxy=proxy,
             mfa_code=mfa_code,
         )
 
-        if proxy:
-            from twscrape.proxies import ensure
-
-            await ensure(proxy)
 
         if "ct0" in account.cookies:
             account.active = True

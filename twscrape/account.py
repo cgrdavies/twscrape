@@ -24,7 +24,6 @@ class Account(JSONTrait):
     headers: dict[str, str] = field(default_factory=dict)
     cookies: dict[str, str] = field(default_factory=dict)
     mfa_code: str | None = None
-    proxy: str | None = None
     error_msg: str | None = None
     last_used: datetime | None = None
     _tx: str | None = None
@@ -79,7 +78,7 @@ class Account(JSONTrait):
         return rs
 
     def make_client(self, proxy: str | None = None) -> AsyncClient:
-        proxies = [proxy, os.getenv("TWS_PROXY"), self.proxy]
+        proxies = [proxy, os.getenv("TWS_PROXY")]
         proxies = [x for x in proxies if x is not None]
         proxy = proxies[0] if proxies else None
 
