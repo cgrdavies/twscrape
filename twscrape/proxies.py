@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from .db_pg import execute, fetchone, fetchall
+from .db_pg import execute, executemany, fetchall, fetchone
 
 
 async def ensure(url: str):
@@ -36,4 +36,19 @@ async def mark_failed(proxy_id: int):
                   last_failed = :ts
             WHERE id = :id""",
         {"id": proxy_id, "ts": datetime.utcnow()},
+    )
+
+
+async def load_from_file(filepath: str) -> None:
+    """Bulk load proxy URLs from a file."""
+    with open(filepath, "r") as f:
+        proxies = [x.strip() for x in f.read().splitlines() if x.strip()]
+
+    if not proxies:
+        return
+
+    await executemany(
+        """INSERT INTO proxies (url) VALUES (:url)
+           ON CONFLICT (url) DO NOTHING""",
+        [{"url": url} for url in proxies],
     )
