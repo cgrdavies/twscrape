@@ -10,10 +10,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, TIMESTAMP, Text, text, ForeignKey
+from sqlalchemy import TIMESTAMP, Boolean, ForeignKey, Text, text
 from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
 
 # --------------------------------------------------------------------------- #
 # Declarative base with a deterministic naming convention

@@ -1,13 +1,14 @@
 import os
+
 import pytest
 
 from twscrape.accounts_pool import AccountsPool
 from twscrape.api import API
-from twscrape.logger import set_log_level
-from twscrape.queue_client import QueueClient, XClIdGenStore
-from twscrape.db_pg import create_engine, set_engine, dispose_engine, execute
-from twscrape.migrations.utils import run_migrations
 from twscrape.config import get_database_url
+from twscrape.db_pg import create_engine, dispose_engine, execute, set_engine
+from twscrape.logger import set_log_level
+from twscrape.migrations.utils import run_migrations
+from twscrape.queue_client import QueueClient, XClIdGenStore
 
 set_log_level("ERROR")
 
@@ -27,14 +28,15 @@ def mock_xclidgenstore(monkeypatch):
 
 async def ensure_test_database(test_db_url):
     """Ensure the test database exists by creating it if necessary."""
-    import asyncpg
     from urllib.parse import urlparse
+
+    import asyncpg
 
     # Parse the test database URL to get connection info
     parsed = urlparse(test_db_url)
 
     # Extract database name from path
-    test_db_name = parsed.path.lstrip('/')
+    test_db_name = parsed.path.lstrip("/")
 
     # Create connection URL to postgres database (for creating the test DB)
     postgres_url = test_db_url.replace(f"/{test_db_name}", "/postgres")
@@ -47,9 +49,7 @@ async def ensure_test_database(test_db_url):
         conn = await asyncpg.connect(connection_url)
 
         # Check if test database exists
-        result = await conn.fetchval(
-            "SELECT 1 FROM pg_database WHERE datname = $1", test_db_name
-        )
+        result = await conn.fetchval("SELECT 1 FROM pg_database WHERE datname = $1", test_db_name)
 
         if not result:
             # Create the test database

@@ -9,14 +9,13 @@ This example demonstrates:
 """
 
 import asyncio
-import os
 import sys
 
 # Add the project root to the path
-sys.path.insert(0, '/app')
+sys.path.insert(0, "/app")
 
 import twscrape
-from twscrape import AccountsPool, API
+from twscrape import API, AccountsPool
 
 
 async def main():
@@ -30,7 +29,7 @@ async def main():
         print(f"❌ Database error: {status['error']}")
         sys.exit(1)
 
-    if status.get('needs_migration'):
+    if status.get("needs_migration"):
         print("⚠️  Database needs migrations - this should have been handled by init container")
         print("🔄 Running migrations...")
         success = twscrape.init_database()
@@ -60,7 +59,7 @@ async def main():
         print(f"📈 Account stats: {stats}")
 
         # Example: Search for tweets (if accounts are available and active)
-        if stats.get('active', 0) > 0:
+        if stats.get("active", 0) > 0:
             print("🔍 Testing search functionality...")
             try:
                 tweets = []

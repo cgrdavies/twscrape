@@ -3,8 +3,8 @@ import pytest
 from pytest_httpx import HTTPXMock
 
 from twscrape.accounts_pool import AccountsPool
+from twscrape.proxies import ensure, get_active, get_proxy_id
 from twscrape.queue_client import QueueClient
-from twscrape.proxies import get_active, ensure, get_proxy_id
 
 URL = "https://example.com/api"
 

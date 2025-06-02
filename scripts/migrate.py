@@ -13,17 +13,16 @@ Environment Variables:
     TWSCRAPE_DB_WAIT_TIMEOUT: Seconds to wait for database (default: 30)
 """
 
-import os
+import argparse
 import sys
 import time
-import argparse
 from pathlib import Path
 
 # Add the parent directory to the path so we can import twscrape
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from twscrape.migrations.utils import init_database, check_migration_status
 from twscrape.config import get_database_url
+from twscrape.migrations.utils import check_migration_status, init_database
 
 
 def wait_for_database(timeout: int = 30) -> bool:
@@ -58,12 +57,19 @@ def wait_for_database(timeout: int = 30) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(description="Run database migrations")
-    parser.add_argument("--check-only", action="store_true",
-                       help="Only check migration status, don't run migrations")
-    parser.add_argument("--wait-for-db", action="store_true",
-                       help="Wait for database to become available before proceeding")
-    parser.add_argument("--timeout", type=int, default=30,
-                       help="Database wait timeout in seconds (default: 30)")
+    parser.add_argument(
+        "--check-only",
+        action="store_true",
+        help="Only check migration status, don't run migrations",
+    )
+    parser.add_argument(
+        "--wait-for-db",
+        action="store_true",
+        help="Wait for database to become available before proceeding",
+    )
+    parser.add_argument(
+        "--timeout", type=int, default=30, help="Database wait timeout in seconds (default: 30)"
+    )
 
     args = parser.parse_args()
 
@@ -89,7 +95,7 @@ def main():
         print(f"❌ Migration status check failed: {status['error']}")
         sys.exit(1)
 
-    print(f"📊 Migration Status:")
+    print("📊 Migration Status:")
     print(f"   Current revision: {status.get('current_revision', 'None')}")
     print(f"   Head revision: {status.get('head_revision', 'None')}")
     print(f"   Up to date: {'✅' if status.get('is_up_to_date') else '❌'}")
@@ -97,10 +103,10 @@ def main():
 
     if args.check_only:
         # Exit with non-zero code if migrations are needed
-        sys.exit(0 if not status.get('needs_migration', True) else 1)
+        sys.exit(0 if not status.get("needs_migration", True) else 1)
 
     # Run migrations if needed
-    if status.get('needs_migration', True):
+    if status.get("needs_migration", True):
         print("🔄 Running database migrations...")
         success = init_database()
         if success:

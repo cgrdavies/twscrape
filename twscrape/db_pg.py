@@ -109,29 +109,36 @@ async def session_scope() -> AsyncIterator[AsyncSession]:
 _migration_checked = False
 _migrations_exist = True
 
+
 class MigrationError(Exception):
     """Raised when database migrations have not been run."""
+
     pass
+
 
 async def check_migrations():
     """Check if database migrations have been run and warn if not."""
     global _migration_checked, _migrations_exist
     if _migration_checked:
         if not _migrations_exist:
-            raise MigrationError("Database schema not found. Please run 'alembic upgrade head' first.")
+            raise MigrationError(
+                "Database schema not found. Please run 'alembic upgrade head' first."
+            )
         return
 
     try:
         # Check if main tables exist
         async with session_scope() as session:
             # Check for accounts table
-            result = await session.execute(text("""
+            result = await session.execute(
+                text("""
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables
                     WHERE table_schema = 'public'
                     AND table_name = 'accounts'
                 )
-            """))
+            """)
+            )
             accounts_exists = result.scalar()
 
             if not accounts_exists:
@@ -143,13 +150,15 @@ async def check_migrations():
                 print("💡 Or set TWSCRAPE_DATABASE_URL and run:")
                 print("   TWSCRAPE_DATABASE_URL='your-db-url' alembic upgrade head")
                 print()
-                raise MigrationError("Database schema not found. Please run 'alembic upgrade head' first.")
+                raise MigrationError(
+                    "Database schema not found. Please run 'alembic upgrade head' first."
+                )
 
         _migration_checked = True
     except MigrationError:
         _migration_checked = True
         raise
-    except Exception as e:
+    except Exception:
         # If we can't connect to check, that's probably a bigger issue
         # Don't spam with migration warnings in that case
         _migration_checked = True
@@ -182,9 +191,7 @@ async def fetchall(sql: str, params: Mapping[str, Any] | None = None):
 
 async def execute(
     sql: str,
-    params: Mapping[str, Any]
-    | Sequence[Mapping[str, Any]]
-    | None = None,
+    params: Mapping[str, Any] | Sequence[Mapping[str, Any]] | None = None,
 ) -> None:
     """
     Execute *sql* once (or many times if *params* is a sequence).

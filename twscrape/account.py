@@ -36,15 +36,21 @@ class Account(JSONTrait):
 
         # Handle JSONB fields - PostgreSQL returns them as dict objects, not strings
         locks_data = doc["locks"] if isinstance(doc["locks"], dict) else json.loads(doc["locks"])
-        doc["locks"] = {k: utc.from_iso(v) if isinstance(v, str) else v for k, v in locks_data.items()}
+        doc["locks"] = {
+            k: utc.from_iso(v) if isinstance(v, str) else v for k, v in locks_data.items()
+        }
 
         stats_data = doc["stats"] if isinstance(doc["stats"], dict) else json.loads(doc["stats"])
         doc["stats"] = {k: v for k, v in stats_data.items() if isinstance(v, int)}
 
-        headers_data = doc["headers"] if isinstance(doc["headers"], dict) else json.loads(doc["headers"])
+        headers_data = (
+            doc["headers"] if isinstance(doc["headers"], dict) else json.loads(doc["headers"])
+        )
         doc["headers"] = headers_data
 
-        cookies_data = doc["cookies"] if isinstance(doc["cookies"], dict) else json.loads(doc["cookies"])
+        cookies_data = (
+            doc["cookies"] if isinstance(doc["cookies"], dict) else json.loads(doc["cookies"])
+        )
         doc["cookies"] = cookies_data
 
         doc["active"] = bool(doc["active"])

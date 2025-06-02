@@ -2,10 +2,8 @@
 Migration utilities for programmatic database schema management.
 """
 
-import os
-import sys
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from alembic import command
 from alembic.config import Config
@@ -65,13 +63,15 @@ def check_migration_status() -> dict:
 
         # Check if migrations table exists
         with engine.connect() as conn:
-            result = conn.execute(text("""
+            result = conn.execute(
+                text("""
                 SELECT EXISTS (
                     SELECT FROM information_schema.tables
                     WHERE table_schema = 'public'
                     AND table_name = 'alembic_version'
                 )
-            """))
+            """)
+            )
             has_alembic_table = result.scalar()
 
         return {
@@ -79,14 +79,11 @@ def check_migration_status() -> dict:
             "head_revision": head_rev,
             "is_up_to_date": current_rev == head_rev,
             "has_alembic_table": has_alembic_table,
-            "needs_migration": current_rev != head_rev or not has_alembic_table
+            "needs_migration": current_rev != head_rev or not has_alembic_table,
         }
 
     except Exception as e:
-        return {
-            "error": str(e),
-            "needs_migration": True
-        }
+        return {"error": str(e), "needs_migration": True}
 
 
 def run_migrations(target_revision: str = "head") -> bool:
@@ -128,11 +125,7 @@ def create_migration(message: str, autogenerate: bool = True) -> bool:
         alembic_cfg = get_alembic_config()
 
         # Create the migration
-        command.revision(
-            alembic_cfg,
-            message=message,
-            autogenerate=autogenerate
-        )
+        command.revision(alembic_cfg, message=message, autogenerate=autogenerate)
 
         print(f"✅ Migration created: {message}")
         return True
@@ -150,12 +143,14 @@ def get_migration_history() -> List[dict]:
 
         history = []
         for rev in script_dir.walk_revisions():
-            history.append({
-                "revision": rev.revision,
-                "down_revision": rev.down_revision,
-                "description": rev.doc,
-                "branch_labels": rev.branch_labels,
-            })
+            history.append(
+                {
+                    "revision": rev.revision,
+                    "down_revision": rev.down_revision,
+                    "description": rev.doc,
+                    "branch_labels": rev.branch_labels,
+                }
+            )
 
         return history
 

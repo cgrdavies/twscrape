@@ -12,7 +12,8 @@ Prerequisites:
 """
 
 import asyncio
-from twscrape import API, gather
+
+from twscrape import API
 
 
 async def main():

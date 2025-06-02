@@ -12,12 +12,17 @@ from .api import API, AccountsPool
 from .config import init_env
 from .logger import logger, set_log_level
 from .login import LoginConfig
-from .migrations.utils import run_migrations, check_migration_status, init_database, create_migration
+from .migrations.utils import (
+    check_migration_status,
+    create_migration,
+    init_database,
+)
 from .models import Tweet, User
 from .utils import print_table
 
 # Initialize environment for CLI usage
 init_env()
+
 
 class CustomHelpFormatter(argparse.HelpFormatter):
     def __init__(self, prog):
@@ -61,7 +66,7 @@ async def main(args):
             print(f"❌ Error: {status['error']}")
             exit(1)
         else:
-            print(f"📊 Migration Status:")
+            print("📊 Migration Status:")
             print(f"   Current revision: {status.get('current_revision', 'None')}")
             print(f"   Head revision: {status.get('head_revision', 'None')}")
             print(f"   Up to date: {'✅' if status.get('is_up_to_date') else '❌'}")
@@ -69,7 +74,7 @@ async def main(args):
         return
 
     if args.command == "create_migration":
-        success = create_migration(args.message, autogenerate=getattr(args, 'autogenerate', True))
+        success = create_migration(args.message, autogenerate=getattr(args, "autogenerate", True))
         exit(0 if success else 1)
 
     login_config = LoginConfig(getattr(args, "email_first", False), getattr(args, "manual", False))
@@ -98,6 +103,12 @@ async def main(args):
     if args.command == "add_accounts":
         await pool.load_from_file(args.file_path, args.line_format)
         print("\nNow run:\ntwscrape login_accounts")
+        return
+
+    if args.command == "add_proxies":
+        from .proxies import load_from_file as load_proxies
+
+        await load_proxies(args.file_path)
         return
 
     if args.command == "del_accounts":
@@ -188,12 +199,19 @@ def run():
 
     create_migration_cmd = subparsers.add_parser("create_migration", help="Create new migration")
     create_migration_cmd.add_argument("message", help="Migration description")
-    create_migration_cmd.add_argument("--no-autogenerate", action="store_false", dest="autogenerate",
-                                    help="Don't auto-generate migration from model changes")
+    create_migration_cmd.add_argument(
+        "--no-autogenerate",
+        action="store_false",
+        dest="autogenerate",
+        help="Don't auto-generate migration from model changes",
+    )
 
     add_accounts = subparsers.add_parser("add_accounts", help="Add accounts")
     add_accounts.add_argument("file_path", help="File with accounts")
     add_accounts.add_argument("line_format", help="args of Pool.add_account splited by same delim")
+
+    add_proxies = subparsers.add_parser("add_proxies", help="Add proxies")
+    add_proxies.add_argument("file_path", help="File with proxy URLs")
 
     del_accounts = subparsers.add_parser("del_accounts", help="Delete accounts")
     del_accounts.add_argument("usernames", nargs="+", default=[], help="Usernames to delete")

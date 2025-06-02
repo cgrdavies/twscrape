@@ -1,5 +1,4 @@
 import asyncio
-import uuid
 from datetime import datetime, timezone
 from typing import TypedDict
 
@@ -97,7 +96,6 @@ class AccountsPool:
             cookies=parse_cookies(cookies) if cookies else {},
             mfa_code=mfa_code,
         )
-
 
         if "ct0" in account.cookies:
             account.active = True
