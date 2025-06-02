@@ -69,7 +69,8 @@ class Account(JSONTrait):
         rs["stats"] = json.dumps(rs["stats"])
         rs["headers"] = json.dumps(rs["headers"])
         rs["cookies"] = json.dumps(rs["cookies"])
-        rs["last_used"] = rs["last_used"].isoformat() if rs["last_used"] else None
+        # Keep last_used as datetime object for PostgreSQL
+        # rs["last_used"] = rs["last_used"].isoformat() if rs["last_used"] else None
 
         # Map _tx field to tx column
         if "_tx" in rs:

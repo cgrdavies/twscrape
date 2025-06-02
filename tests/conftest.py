@@ -6,6 +6,7 @@ from twscrape.api import API
 from twscrape.logger import set_log_level
 from twscrape.queue_client import QueueClient, XClIdGenStore
 from twscrape.db_pg import create_engine, set_engine, dispose_engine, execute
+from twscrape.migrations.utils import run_migrations
 
 set_log_level("ERROR")
 
@@ -38,15 +39,22 @@ async def pool_mock():
     set_engine(engine)
 
     try:
+        # Run migrations to ensure all tables are created
+        success = run_migrations()
+        if not success:
+            raise RuntimeError("Failed to run migrations for test database")
+
         pool = AccountsPool()
 
         # Clean up any existing test data before each test
         await execute("DELETE FROM accounts")
+        await execute("DELETE FROM proxies")
 
         yield pool
 
         # Clean up after each test
         await execute("DELETE FROM accounts")
+        await execute("DELETE FROM proxies")
 
     finally:
         # Clean up engine and restore environment
