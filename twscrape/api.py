@@ -88,7 +88,6 @@ class API:
             # Legacy: pool was a database path, now we ignore it and use database_url
             import os
 
-
             if database_url:
                 os.environ["TWSCRAPE_DATABASE_URL"] = database_url
             self.pool = AccountsPool(raise_when_no_account=raise_when_no_account)
