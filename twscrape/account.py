@@ -55,11 +55,10 @@ class Account(JSONTrait):
 
         doc["active"] = bool(doc["active"])
 
-        # Handle last_used - PostgreSQL returns datetime objects, SQLite returned strings
+        # Ensure last_used is converted to a datetime object
         if doc["last_used"]:
             if isinstance(doc["last_used"], str):
                 doc["last_used"] = utc.from_iso(doc["last_used"])
-            # If it's already a datetime object (PostgreSQL), keep as is
         else:
             doc["last_used"] = None
 

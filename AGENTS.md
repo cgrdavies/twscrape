@@ -8,7 +8,7 @@
 - Both Search and GraphQL API endpoints
 - Account session management with cookie support
 - Email verification via IMAP for account login
-- Database persistence using PostgreSQL and SQLite
+- Database persistence using PostgreSQL
 - CLI tools for command-line usage
 
 ### Key Directories and Files
@@ -30,7 +30,7 @@
 
 ### Prerequisites
 - Python 3.10+ (supports 3.10, 3.11, 3.12, 3.13)
-- PostgreSQL (optional, SQLite used by default)
+- PostgreSQL database
 
 ### Installation
 ```bash
